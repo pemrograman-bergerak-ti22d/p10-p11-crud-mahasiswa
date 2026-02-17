@@ -3,12 +3,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { 
   IonHeader, IonToolbar, IonTitle, IonContent, 
-  IonList, IonItem, IonLabel, IonButton, IonButtons,
+  IonList, IonItem, IonLabel, IonButton, 
   IonInput, IonCard, IonCardContent, IonCardHeader, IonCardTitle,
   IonSelect, IonSelectOption, IonSearchbar, IonRefresher, IonRefresherContent,
-  IonItemSliding, IonItemOptions, IonItemOption, IonNote, // Import tambahan
+  IonItemSliding, IonItemOptions, IonItemOption, IonNote, 
+  IonRadioGroup, IonRadio, IonIcon, IonListHeader,
   AlertController, ToastController 
 } from '@ionic/angular/standalone';
+
+// 1. IMPORT DARI IONICONS
+import { addIcons } from 'ionicons';
+import { createOutline, trashOutline, chevronBackOutline } from 'ionicons/icons';
 
 import { ApiService } from '../services/api.services';
 import { Mahasiswa, MahasiswaDTO } from '../interfaces/mahasiswa';
@@ -19,11 +24,14 @@ import { Mahasiswa, MahasiswaDTO } from '../interfaces/mahasiswa';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    IonHeader, IonToolbar, IonTitle, IonContent, 
+    IonHeader, IonToolbar, IonTitle, IonContent,
     IonList, IonItem, IonLabel, IonButton,
     IonInput, IonCard, IonCardContent, IonCardHeader, IonCardTitle,
     IonSelect, IonSelectOption, IonSearchbar, IonRefresher, IonRefresherContent,
-    IonItemSliding, IonItemOptions, IonItemOption, IonNote // Tambahkan ke imports
+    IonItemSliding, IonItemOptions, IonItemOption, IonNote,
+    IonRadioGroup, IonRadio,
+    IonIcon,
+    IonListHeader
   ]
 })
 export class HomePage implements OnInit {
@@ -31,15 +39,20 @@ export class HomePage implements OnInit {
   allMahasiswa: Mahasiswa[] = [];
   filteredMahasiswa: Mahasiswa[] = [];
 
+  inputNim: string = '';
   inputNama: string = '';
   inputJurusan: string = '';
+  inputJenisKelamin: 'L' | 'P' | '' = ''; 
+
   idEdit: number | null = null;
 
   constructor(
     private api: ApiService,
     private alertCtrl: AlertController,
     private toastCtrl: ToastController
-  ) {}
+  ) {
+    addIcons({ createOutline, trashOutline, chevronBackOutline });
+  }
 
   ngOnInit() {
     this.loadData();
@@ -54,6 +67,7 @@ export class HomePage implements OnInit {
       },
       error: (err) => {
         console.error(err);
+        this.tampilkanToast('Gagal memuat data', 'danger');
         if (event) event.target.complete();
       }
     });
@@ -66,54 +80,66 @@ export class HomePage implements OnInit {
   handleSearch(event: any) {
     const query = event.target.value.toLowerCase();
     this.filteredMahasiswa = this.allMahasiswa.filter(mhs => 
-      mhs.nama.toLowerCase().includes(query)
+      mhs.nama.toLowerCase().includes(query) || mhs.nim.includes(query)
     );
   }
 
   simpanData() {
-    if (!this.inputNama || !this.inputJurusan) {
-      this.tampilkanToast('Nama dan Jurusan harus diisi!', 'warning');
+    if (!this.inputNim || !this.inputNama || !this.inputJurusan || !this.inputJenisKelamin) {
+      this.tampilkanToast('Semua data wajib diisi!', 'warning');
       return;
     }
 
     const data: MahasiswaDTO = {
+      nim: this.inputNim,
       nama: this.inputNama,
-      jurusan: this.inputJurusan
+      jurusan: this.inputJurusan,
+      jenis_kelamin: this.inputJenisKelamin as 'L' | 'P'
     };
 
     if (this.idEdit) {
-      this.api.updateMahasiswa(this.idEdit, data).subscribe(() => {
-        this.tampilkanToast('Data berhasil diperbarui', 'success');
-        this.resetForm();
-        this.loadData();
+      this.api.updateMahasiswa(this.idEdit, data).subscribe({
+        next: () => {
+          this.tampilkanToast('Data berhasil diperbarui', 'success');
+          this.resetForm();
+          this.loadData();
+        },
+        error: (err) => {
+          this.tampilkanToast(err.error.message || 'Gagal update data', 'danger');
+        }
       });
     } else {
-      this.api.tambahMahasiswa(data).subscribe(() => {
-        this.tampilkanToast('Data berhasil ditambahkan', 'success');
-        this.resetForm();
-        this.loadData();
+      this.api.tambahMahasiswa(data).subscribe({
+        next: () => {
+          this.tampilkanToast('Data berhasil ditambahkan', 'success');
+          this.resetForm();
+          this.loadData();
+        },
+        error: (err) => {
+          this.tampilkanToast(err.error.message || 'Gagal tambah data', 'danger');
+        }
       });
     }
   }
 
-  // Fungsi saat tombol EDIT ditekan
   editData(mhs: Mahasiswa) {
     this.idEdit = mhs.id;
+    this.inputNim = mhs.nim;
     this.inputNama = mhs.nama;
     this.inputJurusan = mhs.jurusan; 
+    this.inputJenisKelamin = mhs.jenis_kelamin;
     
-    // Opsional: Scroll ke atas agar user melihat form
-    const content = document.querySelector('ion-content');
-    content?.scrollToTop(500);
+    document.querySelector('ion-content')?.scrollToTop(500);
   }
 
   resetForm() {
     this.idEdit = null;
+    this.inputNim = '';
     this.inputNama = '';
     this.inputJurusan = '';
+    this.inputJenisKelamin = '';
   }
 
-  // Fungsi saat tombol HAPUS ditekan
   async konfirmasiHapus(id: number) {
     const alert = await this.alertCtrl.create({
       header: 'Hapus Data?',

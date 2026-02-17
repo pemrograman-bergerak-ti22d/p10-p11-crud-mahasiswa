@@ -1,11 +1,14 @@
 export interface Mahasiswa {
     id: number;
+    nim: string;
     nama: string;
     jurusan: string;
+    jenis_kelamin: 'L' | 'P';
 }
-
-// Interface untuk data yang dikirim (tanpa ID)
+  
 export interface MahasiswaDTO {
+    nim: string;
     nama: string;
     jurusan: string;
+    jenis_kelamin: 'L' | 'P';
 }
